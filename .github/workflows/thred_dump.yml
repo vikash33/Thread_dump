@@ -15,12 +15,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Check if threaddump.sh exists
+    - name: Verify script exists
       run: |
-        echo "Verifying presence of threaddump.sh..."
+        echo "Checking if threaddump.sh is present..."
         ls -al
         if [ ! -f "threaddump.sh" ]; then
-          echo "❌ threaddump.sh not found!"
+          echo "❌ threaddump.sh not found"
           exit 1
         fi
 
@@ -36,12 +36,11 @@ jobs:
         scp threaddump.sh kk_lab_user_723568@${{ github.event.inputs.vm_ip }}:/tmp/threaddump.sh
         ssh kk_lab_user_723568@${{ github.event.inputs.vm_ip }} "chmod +x /tmp/threaddump.sh"
 
-    - name: Copy GCP key to VM
+    - name: Copy GCP key to VM (in home dir, no sudo needed)
       run: |
         echo "${{ secrets.GCP_KEY_JSON }}" | base64 --decode > key.json
-        scp key.json kk_lab_user_723568@${{ github.event.inputs.vm_ip }}:/tmp/key.json
-        ssh kk_lab_user_723568@${{ github.event.inputs.vm_ip }} "sudo mv /tmp/key.json /usr/local/key.json && sudo chmod 775 /usr/local/key.json && sudo chown root:root /usr/local/key.json"
+        scp key.json kk_lab_user_723568@${{ github.event.inputs.vm_ip }}:/home/kk_lab_user_723568/key.json
 
     - name: Run Thread Dump Script on VM
       run: |
-        ssh kk_lab_user_723568@${{ github.event.inputs.vm_ip }} "sudo bash /tmp/threaddump.sh"
+        ssh kk_lab_user_723568@${{ github.event.inputs.vm_ip }} "bash /tmp/threaddump.sh"
