@@ -1,0 +1,47 @@
+name: Thread Dump Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      vm_ip:
+        description: 'Target VM IP (e.g., 34.56.108.136)'
+        required: true
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Check if threaddump.sh exists
+      run: |
+        echo "Verifying presence of threaddump.sh..."
+        ls -al
+        if [ ! -f "threaddump.sh" ]; then
+          echo "❌ threaddump.sh not found!"
+          exit 1
+        fi
+
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ github.event.inputs.vm_ip }} >> ~/.ssh/known_hosts
+
+    - name: Copy Thread Dump Script to VM
+      run: |
+        scp threaddump.sh kk_lab_user_723568@${{ github.event.inputs.vm_ip }}:/tmp/threaddump.sh
+        ssh kk_lab_user_723568@${{ github.event.inputs.vm_ip }} "chmod +x /tmp/threaddump.sh"
+
+    - name: Copy GCP key to VM
+      run: |
+        echo "${{ secrets.GCP_KEY_JSON }}" | base64 --decode > key.json
+        scp key.json kk_lab_user_723568@${{ github.event.inputs.vm_ip }}:/tmp/key.json
+        ssh kk_lab_user_723568@${{ github.event.inputs.vm_ip }} "sudo mv /tmp/key.json /usr/local/key.json && sudo chmod 775 /usr/local/key.json && sudo chown root:root /usr/local/key.json"
+
+    - name: Run Thread Dump Script on VM
+      run: |
+        ssh kk_lab_user_723568@${{ github.event.inputs.vm_ip }} "sudo bash /tmp/threaddump.sh"
